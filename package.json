@@ -1,0 +1,28 @@
+{
+  "dependencies": {
+    "playwright": "^1.59.1",
+    "ws": "^8.20.0"
+  },
+  "name": "piprapay",
+  "version": "1.0.0",
+  "description": "PipraPay is a self-hosted, open-source payment automation platform by QubePlug.   Deploy it on your own server, customize your workflow, install plugins and themes, and stay fully in control — with no monthly fees.   Visit https://piprapay.com/ for more information.",
+  "main": "check-piprapay.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/samthe-dev/PipraPay.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/samthe-dev/PipraPay/issues"
+  },
+  "homepage": "https://github.com/samthe-dev/PipraPay#readme"
+}

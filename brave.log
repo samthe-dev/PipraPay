@@ -1,0 +1,10 @@
+Authorization required, but no authorization protocol specified
+
+Authorization required, but no authorization protocol specified
+
+
+DevTools listening on ws://127.0.0.1:9222/devtools/browser/a64ed66e-d5a8-4f32-af7e-c3631d070131
+[1177995:1178005:0509/055555.373339:ERROR:ui/base/x/x11_software_bitmap_presenter.cc:147] XGetWindowAttributes failed for window 48234500
+[1177961:1177961:0509/060215.076551:ERROR:brave/components/p3a/star_randomness_points.cc:120] StarRandomnessPoints: no response body for randomness request, net error: ERR_HTTP_RESPONSE_CODE_FAILURE
+[1177961:1177961:0509/060230.305864:ERROR:brave/components/p3a/star_randomness_points.cc:120] StarRandomnessPoints: no response body for randomness request, net error: ERR_HTTP_RESPONSE_CODE_FAILURE
+[1177961:1177961:0509/060250.531385:ERROR:brave/components/p3a/star_randomness_points.cc:120] StarRandomnessPoints: no response body for randomness request, net error: ERR_HTTP_RESPONSE_CODE_FAILURE

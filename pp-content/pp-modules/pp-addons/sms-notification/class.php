@@ -35,6 +35,18 @@ class SmsNotificationAddon
     }
 
     /**
+     * Render configuration form for PipraPay admin
+     * Called by edit.php via $addonObj->configuration()
+     */
+    public function configuration(): string
+    {
+        $settings = $this->get_settings();
+        ob_start();
+        include __DIR__ . '/views/admin-settings.php';
+        return ob_get_clean();
+    }
+
+    /**
      * Admin settings fields
      */
     public function settings_fields(): array

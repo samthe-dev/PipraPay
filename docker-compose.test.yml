@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  piprapay:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: piprapay-test
+    ports:
+      - "8082:80"
+    volumes:
+      - ./pp-content:/var/www/html/pp-content:delegated
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      PIPRAPAY_DB_HOST: mysql
+      PIPRAPAY_DB_NAME: piprapay_test
+      PIPRAPAY_DB_USER: piprapay
+      PIPRAPAY_DB_PASS: test123456
+
+  mysql:
+    image: mysql:8.0
+    container_name: piprapay-test-db
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_DATABASE: piprapay_test
+      MYSQL_USER: piprapay
+      MYSQL_PASSWORD: test123456
+    volumes:
+      - piprapay-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot123456"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: piprapay-test-pma
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: root
+      PMA_PASSWORD: root123456
+    depends_on:
+      - mysql
+
+volumes:
+  piprapay-db-data:
