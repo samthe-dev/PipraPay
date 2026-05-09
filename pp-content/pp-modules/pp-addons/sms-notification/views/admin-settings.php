@@ -34,7 +34,7 @@ $settings = $addon_settings ?? [];
         <!-- Provider -->
         <div class="mb-3">
             <label class="form-label fw-semibold">SMS Provider</label>
-            <select name="sms_provider" class="form-select">
+            <select name="sms_provider" class="form-select" id="sms_provider">
                 <option value="bulksmsbd" <?= ($settings['sms_provider'] ?? 'bulksmsbd') === 'bulksmsbd' ? 'selected' : '' ?>>
                     BulkSMSBD
                 </option>
@@ -44,7 +44,7 @@ $settings = $addon_settings ?? [];
         <!-- API Key -->
         <div class="mb-3">
             <label class="form-label fw-semibold">API Key</label>
-            <input type="text" name="sms_api_key" class="form-control"
+            <input type="text" name="sms_api_key" class="form-control" id="sms_api_key"
                    value="<?= htmlspecialchars($settings['sms_api_key'] ?? '') ?>"
                    placeholder="Enter your BulkSMSBD API key">
             <div class="form-text">Get your API key from <a href="https://bulksmsbd.com" target="_blank">bulksmsbd.com</a></div>
@@ -53,7 +53,7 @@ $settings = $addon_settings ?? [];
         <!-- Sender ID -->
         <div class="mb-3">
             <label class="form-label fw-semibold">Sender ID</label>
-            <input type="text" name="sms_sender_id" class="form-control"
+            <input type="text" name="sms_sender_id" class="form-control" id="sms_sender_id"
                    value="<?= htmlspecialchars($settings['sms_sender_id'] ?? '') ?>"
                    placeholder="e.g., PipraPay">
             <div class="form-text">Must be a registered sender ID with BulkSMSBD</div>
@@ -75,13 +75,23 @@ $settings = $addon_settings ?? [];
         <!-- Template -->
         <div class="mb-3">
             <label class="form-label fw-semibold">SMS Template</label>
-            <textarea name="sms_success_template" class="form-control" rows="3"
+            <textarea name="sms_success_template" class="form-control" rows="3" id="sms_success_template"
                       placeholder="Dear {name}, your payment of {amount} {currency} has been confirmed. TxnID: {txn_id}."
             ><?= htmlspecialchars($settings['sms_success_template'] ?? 'Dear {name}, your payment of {amount} {currency} has been confirmed. TxnID: {txn_id}. Thank you!') ?></textarea>
             <div class="form-text">
                 Available placeholders: <code>{name}</code>, <code>{amount}</code>, <code>{currency}</code>, <code>{txn_id}</code>, <code>{gateway}</code>, <code>{brand}</code>
             </div>
         </div>
+
+        <!-- Save Button -->
+        <div class="mb-3">
+            <button type="button" class="btn btn-primary" id="btn_save_sms_settings">
+                Save SMS Settings
+            </button>
+            <span id="sms_save_status" class="ms-2"></span>
+        </div>
+
+        <hr>
 
         <!-- Test SMS -->
         <div class="mb-3">
@@ -98,6 +108,47 @@ $settings = $addon_settings ?? [];
 </div>
 
 <script>
+document.getElementById('btn_save_sms_settings').addEventListener('click', function() {
+    const btn = this;
+    const status = document.getElementById('sms_save_status');
+    const csrf = document.querySelector('input[name="csrf_token_default"]').value;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+    status.innerHTML = '';
+
+    const data = {
+        action: 'sms-notification-save-settings',
+        csrf_token: csrf,
+        sms_provider: document.getElementById('sms_provider').value,
+        sms_api_key: document.getElementById('sms_api_key').value,
+        sms_sender_id: document.getElementById('sms_sender_id').value,
+        sms_on_success: document.getElementById('sms_on_success').checked ? '1' : '0',
+        sms_success_template: document.getElementById('sms_success_template').value,
+    };
+
+    fetch('<?php echo $site_url; ?>pp-content/pp-modules/pp-addons/sms-notification/api/save-settings.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(data).toString()
+    })
+    .then(r => r.json())
+    .then(resp => {
+        btn.disabled = false;
+        btn.innerHTML = 'Save SMS Settings';
+        if (resp.status === 'true') {
+            status.innerHTML = '<span class="text-success">✓ ' + resp.message + '</span>';
+        } else {
+            status.innerHTML = '<span class="text-danger">✗ ' + (resp.message || 'Save failed') + '</span>';
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = 'Save SMS Settings';
+        status.innerHTML = '<span class="text-danger">✗ Error: ' + err.message + '</span>';
+    });
+});
+
 function sendTestSMS() {
     const number = document.getElementById('test_sms_number').value.trim();
     const resultDiv = document.getElementById('test_sms_result');
@@ -109,7 +160,7 @@ function sendTestSMS() {
 
     resultDiv.innerHTML = '<span class="text-info">Sending...</span>';
 
-    fetch('<?= pp_site_url() ?>pp-content/pp-modules/pp-addons/sms-notification/api/test.php', {
+    fetch('<?php echo $site_url; ?>pp-content/pp-modules/pp-addons/sms-notification/api/test.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ number: number })

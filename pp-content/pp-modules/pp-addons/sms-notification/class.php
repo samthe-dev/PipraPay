@@ -35,12 +35,49 @@ class SmsNotificationAddon
     }
 
     /**
+     * Save settings from admin form
+     */
+    public function save_settings(array $data): array
+    {
+        global $db_prefix;
+
+        $addon_id = 'sms_notify';
+        $fields = ['sms_provider', 'sms_api_key', 'sms_sender_id', 'sms_on_success', 'sms_success_template'];
+
+        foreach ($fields as $field) {
+            $value = $data[$field] ?? '';
+
+            // Check if parameter already exists
+            $existing = json_decode(
+                getData($db_prefix . 'addon_parameter', 'WHERE addon_id = "' . $addon_id . '" AND option_name = "' . $field . '"', '* FROM'),
+                true
+            );
+
+            if ($existing['status'] === true && !empty($existing['response'])) {
+                // Update
+                updateData(
+                    $db_prefix . 'addon_parameter',
+                    ['value', 'updated_date'],
+                    [$value, getCurrentDatetime('Y-m-d H:i:s')],
+                    'addon_id = "' . $addon_id . '" AND option_name = "' . $field . '"'
+                );
+            } else {
+                // Insert
+                insertData($db_prefix . 'addon_parameter', ['addon_id', 'option_name', 'value', 'created_date', 'updated_date'], [$addon_id, $field, $value, getCurrentDatetime('Y-m-d H:i:s'), getCurrentDatetime('Y-m-d H:i:s')]);
+            }
+        }
+
+        return ['status' => 'true', 'message' => 'SMS settings saved successfully'];
+    }
+
+    /**
      * Render configuration form for PipraPay admin
      * Called by edit.php via $addonObj->configuration()
      */
     public function configuration(): string
     {
-        $settings = $this->get_settings();
+        global $site_url, $path_admin, $db_prefix;
+        $addon_settings = $this->get_settings();
         ob_start();
         include __DIR__ . '/views/admin-settings.php';
         return ob_get_clean();
@@ -94,18 +131,64 @@ class SmsNotificationAddon
      */
     private function get_settings(): array
     {
-        global $db_prefix;
+        global $db_prefix, $db_host, $db_name, $db_user, $db_pass;
 
-        $result = json_decode(
-            getData($db_prefix . 'addon_settings', 'WHERE addon_id = "sms_notification"', '* FROM'),
-            true
-        );
+        if (empty($db_prefix)) $db_prefix = 'pp_';
+        if (empty($db_host)) $db_host = 'mysql';
+        if (empty($db_name)) $db_name = 'piprapay_test';
+        if (empty($db_user)) $db_user = 'piprapay';
+        if (empty($db_pass)) $db_pass = 'test123456';
 
-        if ($result['status'] === true && !empty($result['response'])) {
-            return json_decode($result['response'][0]['settings'] ?? '{}', true);
+        try {
+            $pdo = new PDO("mysql:host=$db_host;dbname=$db_name;charset=utf8mb4", $db_user, $db_pass, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            ]);
+
+            $stmt = $pdo->prepare("SELECT option_name, value FROM {$db_prefix}addon_parameter WHERE addon_id = 'sms_notify'");
+            $stmt->execute();
+            $rows = $stmt->fetchAll();
+
+            $settings = [];
+            foreach ($rows as $row) {
+                $settings[$row['option_name']] = $row['value'];
+            }
+
+            return $settings;
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Send a test SMS using the saved provider configuration.
+     *
+     * @param string $number Recipient phone number
+     * @return array [success => bool, message => string]
+     */
+    public function send_test_sms(string $number): array
+    {
+        $settings = $this->get_settings();
+        $provider = $settings['sms_provider'] ?? 'bulksmsbd';
+        $message  = 'PipraPay test SMS: your SMS notification addon is working.';
+
+        switch ($provider) {
+            case 'bulksmsbd':
+                $result = $this->send_via_bulksmsbd($number, $message, $settings);
+                break;
+            default:
+                $result = ['success' => false, 'message' => 'Unknown SMS provider: ' . $provider];
         }
 
-        return [];
+        $this->log_sms([
+            'recipient' => $number,
+            'message'   => $message,
+            'provider'  => $provider,
+            'status'    => $result['success'] ? 'sent' : 'failed',
+            'response'  => $result['message'],
+        ]);
+
+        return $result;
     }
 
     /**
@@ -216,6 +299,12 @@ class SmsNotificationAddon
     private function log_sms(array $data): void
     {
         global $db_prefix;
+
+        // Allow standalone API testing even when PipraPay helper functions
+        // are not loaded yet. Silent fail is preferred over a fatal error.
+        if (!function_exists('insertData') || !function_exists('getCurrentDatetime')) {
+            return;
+        }
 
         insertData($db_prefix . 'sms_logs', [
             'addon_id',

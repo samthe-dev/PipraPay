@@ -1826,6 +1826,19 @@
 
                 $response_transaction = json_decode(getData($db_prefix.'transaction','WHERE ref = :ref AND status = :status ', '* FROM', $params),true);
 
+                // SMS Notification addon hook — silent fail, never break payment flow
+                $sms_hook = __DIR__ . '/../pp-modules/pp-addons/sms-notification/hook.php';
+                if (file_exists($sms_hook)) {
+                    require_once $sms_hook;
+                    if (function_exists('pp_sms_on_transaction_completed') && !empty($response_transaction['response'][0])) {
+                        try {
+                            pp_sms_on_transaction_completed($response_transaction['response'][0]);
+                        } catch (Throwable $e) {
+                            error_log('[SMS Notification] Hook error: ' . $e->getMessage());
+                        }
+                    }
+                }
+
                 $metadata = json_decode($response_transaction['response'][0]['metadata'], true) ?: [];
 
                 $response_gateway = json_decode(getData($db_prefix.'gateways',' WHERE brand_id ="'.$response_transaction['response'][0]['brand_id'].'" AND gateway_id = "'.$gateway_id.'"'),true);
